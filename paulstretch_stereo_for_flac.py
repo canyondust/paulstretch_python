@@ -14,8 +14,6 @@
 
 import sys
 from numpy import *
-import scipy.io.wavfile
-import wave
 import soundfile as sf
 from optparse import OptionParser
 from datetime import datetime
