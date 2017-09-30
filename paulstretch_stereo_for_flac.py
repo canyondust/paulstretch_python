@@ -28,7 +28,7 @@ def print_inputfile_stats(filename):
         print('Error loading file: {!s} {!r}'.format(filename, sys.exc_info()[0]))
         return None
 
-def load_wav(filename, start_frame, end_frame, reverse_input):
+def load_wav(filename, start_frame, end_frame, reverse_input, reverse_input_left, reverse_input_right, braid, braid_on, reverse_on):
     try:
         print('\n#Input\n')
         print(sf.info(filename), True)
@@ -39,23 +39,86 @@ def load_wav(filename, start_frame, end_frame, reverse_input):
         
         #print('Samplerate: {} Hz'.format(samplerate))
 
+        output_decorations = ''
+
         print('Correcting input data layout: {} frames'.format(len(wavedata)))
 
         ar = [[], []]
-        for a in wavedata:
-            ar[0].append(a[0])
-            ar[1].append(a[1])
+
+        if braid:
+            output_decorations = output_decorations + '_b{}'.format(braid_on)
+            print('Braid frames, change on every {} frame'.format(braid_on))
+            i = 0
+            b_c_0 = 0
+            b_c_1 = 1
+            for a in wavedata:
+                ar[b_c_0].append(a[0])
+                ar[b_c_1].append(a[1])
+                i = i + 1
+                if i == braid_on:
+                    if b_c_0 == 0:
+                        b_c_0 = 1
+                        b_c_1 = 0
+                    else:
+                        b_c_0 = 0
+                        b_c_1 = 1
+                    i = 0
+        else:
+            for a in wavedata:
+                ar[0].append(a[0])
+                ar[1].append(a[1])
+        
+        if reverse_on > 0:
+            output_decorations = output_decorations + '_ro{}'.format(reverse_on)
+            print('Reverse frames, change on every {} frame'.format(reverse_on))
+            r_buf = [[], []]
+            r_o = 0
+            i = 0
+            do_revers = False
+            l = []
+            r = []
+            while i < len(ar[0]):
+                l.append(ar[0][i])
+                r.append(ar[1][i])
+                i = i + 1
+                r_o = r_o + 1
+                if (i == len(ar[0])) or r_o == reverse_on:
+                    if do_revers:
+                        l = l[::-1]
+                        r = r[::-1]
+                        do_revers = False
+                    else:
+                        do_revers = True
+                    
+                    r_buf[0].extend(l)
+                    r_buf[1].extend(r)
+                    l = []
+                    r = []
+                    r_o = 0
+            
+            ar = r_buf
 
         if reverse_input:
+            output_decorations = output_decorations + '_r'
             print('Reverse input file')
             ar[0] = ar[0][::-1]
+            ar[1] = ar[1][::-1]
+        
+        if reverse_input_left:
+            output_decorations = output_decorations + '_rl'
+            print('Reverse left channel on input file')
+            ar[0] = ar[0][::-1]
+
+        if reverse_input_right:
+            output_decorations = output_decorations + '_rr'
+            print('Reverse right channel on input file')
             ar[1] = ar[1][::-1]
 
         wavedata = array(ar)
 
         print('{} frames corrected'.format(len(wavedata[0])))
 
-        return (samplerate,wavedata)
+        return (samplerate, wavedata, output_decorations)
     except:
         print('Error loading file: {!s} {!r}'.format(filename, sys.exc_info()[0]))
         return None
@@ -171,38 +234,85 @@ def paulstretch(samplerate, smp, stretch, windowsize_seconds, outfilename):
     print(sf.info(outfilename), True)
 
 ########################################
-print("Paul's Extreme Sound Stretch (Paulstretch) - Python version 20141220")
-print("by Nasca Octavian PAUL, Targu Mures, Romania\n")
-parser = OptionParser(usage="usage: %prog [options] input_wav output_wav")
-parser.add_option("-s", "--stretch", dest="stretch", help="stretch amount (1.0 = no stretch)", type="float", default=8.0)
-parser.add_option("-w", "--window_size", dest="window_size", help="window size (seconds)", type="float", default=0.25)
-parser.add_option("-t", "--start_frame", dest="start_frame", help="Start read on frame", type="int", default=0)
-parser.add_option("-e", "--end_frame", dest="end_frame", help="End read on frame", type="int", default=None)
-parser.add_option("-r", "--reverse", action="store_true", dest="reverse_input", help="Reverse input file", default=False)
-parser.add_option("-i", "--input_file_stat", action="store_true", dest="input_file_stat", help="Print inputfile stat and then exit", default=False)
-parser.add_option("-l", "--list_supported_types", action="store_true", dest="list_supported_types", help="List all supported input file types and then exit", default=False)
 
-(options, args) = parser.parse_args()
+if __name__ == "__main__":
+    print("Paul's Extreme Sound Stretch (Paulstretch) - Python version 20141220")
+    print("by Nasca Octavian PAUL, Targu Mures, Romania\n")
+    parser = OptionParser(usage="usage: %prog [options] input_file output_file(optional)")
+    parser.add_option("-s", "--stretch", dest="stretch", help="stretch amount (1.0 = no stretch), above 0.0", type="float", default=8.0)
+    parser.add_option("-w", "--window_size", dest="window_size", help="window size (seconds), above 0.001", type="float", default=0.25)
+    parser.add_option("-t", "--start_frame", dest="start_frame", help="Start read on frame", type="int", default=0)
+    parser.add_option("-e", "--end_frame", dest="end_frame", help="End read on frame", type="int", default=None)
+    parser.add_option("-r", "--reverse", action="store_true", dest="reverse_input", help="Reverse input file", default=False)
+    parser.add_option("--reverse_left", action="store_true", dest="reverse_input_left", help="Reverse left channel on input file", default=False)
+    parser.add_option("--reverse_right", action="store_true", dest="reverse_input_right", help="Reverse right channel on input file", default=False)
+    parser.add_option("-b","--braid", action="store_true", dest="braid", help="Braid right and left channels by frame", default=False)
+    parser.add_option("--braid_on", dest="braid_on", help="Braid on frame (default=1), must be used with braid option", type="int", default=1)
+    parser.add_option("--reverse_on", dest="reverse_on", help="Reverse on frame (default=1)", type="int", default=0)
+    parser.add_option("-d","--dont_stretch", action="store_true", dest="dont_stretch", help="Dont stretch file, just store output and exit", default=False)
+    parser.add_option("-i", "--input_file_stat", action="store_true", dest="input_file_stat", help="Print inputfile stat and then exit", default=False)
+    parser.add_option("-l", "--list_supported_types", action="store_true", dest="list_supported_types", help="List all supported input file types and then exit", default=False)
+    parser.add_option("--output_name", dest="output_name", help="Output name added to decorations if not on command line", type="string", default="")
 
-if options.list_supported_types:
-    print('Supported file types:\n')
-    for file_type, desc in sf.available_formats().items():
-        print('{} - {}'.format(file_type, desc))
-    sys.exit(0)
+    (options, args) = parser.parse_args()
 
-if len(args) > 0 and options.input_file_stat:
-    print_inputfile_stats(args[0])
-    sys.exit(0) 
+    if options.list_supported_types:
+        print('Supported file types:\n')
+        for file_type, desc in sf.available_formats().items():
+            print('{} - {}'.format(file_type, desc))
+        sys.exit(0)
 
-if (len(args) < 2) or (options.stretch <= 0.0) or (options.window_size <= 0.001):
-    print("Error in command line parameters. Run this program with --help for help.")
-    sys.exit(1)
+    if len(args) > 0 and options.input_file_stat:
+        print_inputfile_stats(args[0])
+        sys.exit(0) 
 
-print('stretch amount = {}'.format(options.stretch))
-print('window size = {} seconds'.format(options.window_size))
-(samplerate, smp) = load_wav(args[0], options.start_frame, options.end_frame, options.reverse_input)
+    if len(args) < 1:
+        print("Error in command line parameters. Run this program with --help for help.")
+        sys.exit(1)
+    elif len(args) == 1:
+        outputfile = ""
+    else:
+        outputfile = args[1]
 
-paulstretch(samplerate, smp, options.stretch, options.window_size, args[1])
+    (samplerate, smp, output_decorations) = load_wav(
+        args[0], 
+        options.start_frame, 
+        options.end_frame, 
+        options.reverse_input, 
+        options.reverse_input_left, 
+        options.reverse_input_right, 
+        options.braid,
+        options.braid_on,
+        options.reverse_on
+        )
 
+    if options.dont_stretch:
+        output_decorations = output_decorations + '_d'
+        frames = []
+        for i in range(len(smp[0])):
+            frames.append([smp[0][i], smp[0][i]])
 
+        if outputfile == "":
+            infile_split = args[0].split(".")
+            if options.output_name == "":
+                outputfile = infile_split[0]
+            outputfile = outputfile + options.output_name + output_decorations  + '.' + infile_split[len(infile_split)-1]
 
+        sf.write(outputfile, frames, samplerate, 'PCM_16')
+        print('\n#Output\n')
+        print(sf.info(outputfile), True)
+    elif (options.stretch > 0.0) and (options.window_size > 0.001):
+        output_decorations = output_decorations + '_s{}_w{}'.format(options.stretch, options.window_size)
+        print('stretch amount = {}'.format(options.stretch))
+        print('window size = {} seconds'.format(options.window_size))
+
+        if outputfile == "":
+            infile_split = args[0].split(".")
+            if options.output_name == "":
+                outputfile = infile_split[0]
+            outputfile = outputfile + options.output_name + output_decorations + '.' + infile_split[len(infile_split)-1]
+
+        paulstretch(samplerate, smp, options.stretch, options.window_size, outputfile)
+    else:
+        print("Error in command line parameters. Run this program with --help for help.")
+        sys.exit(1)
