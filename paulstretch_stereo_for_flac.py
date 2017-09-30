@@ -15,7 +15,7 @@
 import sys
 from numpy import *
 import soundfile as sf
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 from datetime import datetime
 
 def print_inputfile_stats(filename):
@@ -259,16 +259,23 @@ if __name__ == "__main__":
     print("Paul's Extreme Sound Stretch (Paulstretch) - Python version 20141220")
     print("by Nasca Octavian PAUL, Targu Mures, Romania\n")
     parser = OptionParser(usage="usage: %prog [options] input_file output_file(optional)")
-    parser.add_option("-s", "--stretch", dest="stretch", help="stretch amount (1.0 = no stretch), above 0.0", type="float", default=8.0)
-    parser.add_option("-w", "--window_size", dest="window_size", help="window size (seconds), above 0.001", type="float", default=0.25)
-    parser.add_option("-t", "--start_frame", dest="start_frame", help="Start read on frame", type="int", default=0)
-    parser.add_option("-e", "--end_frame", dest="end_frame", help="End read on frame", type="int", default=None)
-    parser.add_option("-r", "--reverse", action="store_true", dest="reverse_input", help="Reverse input file", default=False)
-    parser.add_option("--reverse_left", action="store_true", dest="reverse_input_left", help="Reverse left channel on input file", default=False)
-    parser.add_option("--reverse_right", action="store_true", dest="reverse_input_right", help="Reverse right channel on input file", default=False)
-    parser.add_option("-b","--braid", action="store_true", dest="braid", help="Braid right and left channels by frame", default=False)
-    parser.add_option("--braid_on", dest="braid_on", help="Braid on frame (default=1), must be used with braid option", type="int", default=1)
-    parser.add_option("--reverse_on", dest="reverse_on", help="Reverse on frame (default=1)", type="int", default=0)
+
+    paulstrech_options = OptionGroup(parser, 'Paulstrech Options')
+    paulstrech_options.add_option("-s", "--stretch", dest="stretch", help="stretch amount (1.0 = no stretch), above 0.0", type="float", default=8.0)
+    paulstrech_options.add_option("-w", "--window_size", dest="window_size", help="window size (seconds), above 0.001", type="float", default=0.25)
+    parser.add_option_group(paulstrech_options)
+    
+    input_mani_options = OptionGroup(parser, 'Input File Manipulation Options')
+    input_mani_options.add_option("-t", "--start_frame", dest="start_frame", help="Start read on frame", type="int", default=0)
+    input_mani_options.add_option("-e", "--end_frame", dest="end_frame", help="End read on frame", type="int", default=None)
+    input_mani_options.add_option("-r", "--reverse", action="store_true", dest="reverse_input", help="Reverse input file", default=False)
+    input_mani_options.add_option("--reverse_left", action="store_true", dest="reverse_input_left", help="Reverse left channel on input file", default=False)
+    input_mani_options.add_option("--reverse_right", action="store_true", dest="reverse_input_right", help="Reverse right channel on input file", default=False)
+    input_mani_options.add_option("-b","--braid", action="store_true", dest="braid", help="Braid right and left channels by frame", default=False)
+    input_mani_options.add_option("--braid_on", dest="braid_on", help="Braid on frame (default=1), must be used with braid option", type="int", default=1)
+    input_mani_options.add_option("--reverse_on", dest="reverse_on", help="Reverse on frame (default=1)", type="int", default=0)
+    parser.add_option_group(input_mani_options)
+
     parser.add_option("-d","--dont_stretch", action="store_true", dest="dont_stretch", help="Dont stretch file, just store output and exit", default=False)
     parser.add_option("-i", "--input_file_stat", action="store_true", dest="input_file_stat", help="Print inputfile stat and then exit", default=False)
     parser.add_option("-l", "--list_supported_types", action="store_true", dest="list_supported_types", help="List all supported input file types and then exit", default=False)
