@@ -20,7 +20,6 @@ from datetime import datetime
 
 def print_inputfile_stats(filename):
     try:
-        #print('Loading file: {!s}'.format(filename))
         wavedata, samplerate = sf.read(filename)
         print(sf.info(filename), True)
         print('frames: {}'.format(len(wavedata)))
@@ -28,17 +27,86 @@ def print_inputfile_stats(filename):
         print('Error loading file: {!s} {!r}'.format(filename, sys.exc_info()[0]))
         return None
 
+def braid_frames(frames, braid_on):
+    print('Braid frames, change on every {} frame'.format(braid_on))
+    ar = [[], []]
+    i = 0
+    b_c_0 = 0
+    b_c_1 = 1
+    for a in frames:
+        ar[b_c_0].append(a[0])
+        ar[b_c_1].append(a[1])
+        i = i + 1
+        if i == braid_on:
+            if b_c_0 == 0:
+                b_c_0 = 1
+                b_c_1 = 0
+            else:
+                b_c_0 = 0
+                b_c_1 = 1
+            i = 0
+    
+    return ar
+
+def reverse_on_frame(frames, reverse_on):
+    print('Reverse frames, change on every {} frame'.format(reverse_on))
+    r_buf = [[], []]
+    r_o = 0
+    i = 0
+    do_revers = False
+    l = []
+    r = []
+    while i < len(frames[0]):
+        l.append(frames[0][i])
+        r.append(frames[1][i])
+        i = i + 1
+        r_o = r_o + 1
+        if (i == len(frames[0])) or r_o == reverse_on:
+            if do_revers:
+                l = l[::-1]
+                r = r[::-1]
+                do_revers = False
+            else:
+                do_revers = True
+            
+            r_buf[0].extend(l)
+            r_buf[1].extend(r)
+            l = []
+            r = []
+            r_o = 0
+
+    return r_buf
+
+def reverse_frames(frames):
+    print('Reverse input file')
+    frames[0] = frames[0][::-1]
+    frames[1] = frames[1][::-1]
+    return frames
+
+def reverse_frames_left_channel(frames):
+    print('Reverse left channel on input file')
+    frames[0] = frames[0][::-1]
+    return frames
+
+def reverse_frames_right_channel(frames):
+    print('Reverse right channel on input file')
+    frames[1] = frames[1][::-1]
+    return frames
+
 def load_wav(filename, start_frame, end_frame, reverse_input, reverse_input_left, reverse_input_right, braid, braid_on, reverse_on):
     try:
         print('\n#Input\n')
         print(sf.info(filename), True)
+        
         wavedata, samplerate = sf.read(filename, start=start_frame, stop=end_frame)
+    except:
+        print('Error loading file: {!s} {!r}'.format(filename, sys.exc_info()[0]))
+        return None
+    else:
         print('frames read: {}'.format(len(wavedata)))
         print('start_frame: {}'.format(start_frame))
         print('end_frame: {}'.format(end_frame or len(wavedata)))
         
-        #print('Samplerate: {} Hz'.format(samplerate))
-
         output_decorations = ''
 
         print('Correcting input data layout: {} frames'.format(len(wavedata)))
@@ -47,22 +115,7 @@ def load_wav(filename, start_frame, end_frame, reverse_input, reverse_input_left
 
         if braid:
             output_decorations = output_decorations + '_b{}'.format(braid_on)
-            print('Braid frames, change on every {} frame'.format(braid_on))
-            i = 0
-            b_c_0 = 0
-            b_c_1 = 1
-            for a in wavedata:
-                ar[b_c_0].append(a[0])
-                ar[b_c_1].append(a[1])
-                i = i + 1
-                if i == braid_on:
-                    if b_c_0 == 0:
-                        b_c_0 = 1
-                        b_c_1 = 0
-                    else:
-                        b_c_0 = 0
-                        b_c_1 = 1
-                    i = 0
+            ar = braid_frames(wavedata, braid_on)
         else:
             for a in wavedata:
                 ar[0].append(a[0])
@@ -70,58 +123,25 @@ def load_wav(filename, start_frame, end_frame, reverse_input, reverse_input_left
         
         if reverse_on > 0:
             output_decorations = output_decorations + '_ro{}'.format(reverse_on)
-            print('Reverse frames, change on every {} frame'.format(reverse_on))
-            r_buf = [[], []]
-            r_o = 0
-            i = 0
-            do_revers = False
-            l = []
-            r = []
-            while i < len(ar[0]):
-                l.append(ar[0][i])
-                r.append(ar[1][i])
-                i = i + 1
-                r_o = r_o + 1
-                if (i == len(ar[0])) or r_o == reverse_on:
-                    if do_revers:
-                        l = l[::-1]
-                        r = r[::-1]
-                        do_revers = False
-                    else:
-                        do_revers = True
-                    
-                    r_buf[0].extend(l)
-                    r_buf[1].extend(r)
-                    l = []
-                    r = []
-                    r_o = 0
-            
-            ar = r_buf
+            ar = reverse_on_frame(ar, reverse_on)
 
         if reverse_input:
             output_decorations = output_decorations + '_r'
-            print('Reverse input file')
-            ar[0] = ar[0][::-1]
-            ar[1] = ar[1][::-1]
-        
+            ar = reverse_frames(ar)
+       
         if reverse_input_left:
             output_decorations = output_decorations + '_rl'
-            print('Reverse left channel on input file')
-            ar[0] = ar[0][::-1]
+            ar = reverse_frames_left_channel(ar)
 
         if reverse_input_right:
             output_decorations = output_decorations + '_rr'
-            print('Reverse right channel on input file')
-            ar[1] = ar[1][::-1]
+            ar = reverse_frames_right_channel(ar)
 
         wavedata = array(ar)
 
         print('{} frames corrected'.format(len(wavedata[0])))
 
         return (samplerate, wavedata, output_decorations)
-    except:
-        print('Error loading file: {!s} {!r}'.format(filename, sys.exc_info()[0]))
-        return None
 
 def optimize_windowsize(n):
     orig_n = n
