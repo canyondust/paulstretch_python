@@ -6,7 +6,7 @@ PySoundFile
 http://pysoundfile.readthedocs.io/en/0.9.0/#installation
 
 Install dependencies using pip:
-pip install ciffi
+pip install cffi
 pip install numpy
 
 Install PySoundFile using pip:
@@ -20,7 +20,7 @@ To use file support run file using python3:
 paulstretch_stereo_for_flac.py
 
 Example:
-python3 paulstretch_stereo_for_flac.py -s 2.0 -w 1 -r t.flac t_tt_n.flac
+python3 paulstretch_stereo_for_flac.py -s 2.0 -w 0.25 input.flac output.flac
 
 List all supported formats:
 python3 paulstretch_stereo_for_flac.py -l
