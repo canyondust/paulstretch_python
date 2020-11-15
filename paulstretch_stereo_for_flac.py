@@ -126,6 +126,12 @@ def load_wav(filename, start_frame, end_frame, reverse_input, reverse_input_left
         if braid:
             output_decorations = output_decorations + '_b{}'.format(braid_on)
             ar = braid_frames(wavedata, braid_on)
+            
+        # my hack mono to stereo conversion
+        elif (str(type(wavedata[0])) == "<class 'numpy.float64'>"):
+            for a in wavedata:
+                ar[0].append(a)
+                ar[1].append(a)
         else:
             for a in wavedata:
                 ar[0].append(a[0])
