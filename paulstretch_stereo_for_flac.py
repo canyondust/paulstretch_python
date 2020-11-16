@@ -36,19 +36,34 @@ def braid_frames(frames, braid_on):
     i = 0
     b_c_0 = 0
     b_c_1 = 1
-    for a in frames:
-        ar[b_c_0].append(a[0])
-        ar[b_c_1].append(a[1])
-        i = i + 1
-        if i == braid_on:
-            if b_c_0 == 0:
-                b_c_0 = 1
-                b_c_1 = 0
-            else:
-                b_c_0 = 0
-                b_c_1 = 1
-            i = 0
-
+    
+    if (str(type(frames[0])) == "<class 'numpy.float64'>"):
+        print('Warning: Mono Input, Braid will have no effect')
+        for a in frames:
+            ar[b_c_0].append(a)
+            ar[b_c_1].append(a)
+            i = i + 1
+            if i == braid_on:
+                if b_c_0 == 0:
+                    b_c_0 = 1
+                    b_c_1 = 0
+                else:
+                    b_c_0 = 0
+                    b_c_1 = 1
+                    i = 0
+    else:
+        for a in frames:
+            ar[b_c_0].append(a[0])
+            ar[b_c_1].append(a[1])
+            i = i + 1
+            if i == braid_on:
+                if b_c_0 == 0:
+                    b_c_0 = 1
+                    b_c_1 = 0
+                else:
+                    b_c_0 = 0
+                    b_c_1 = 1
+                    i = 0        
     return ar
 
 
